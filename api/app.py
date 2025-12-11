@@ -7,9 +7,6 @@ import re
 
 app = Flask(__name__)
 
-# SECRET KEY removed (never hardcode secrets)
-# SECRET_KEY = "dev-secret-key-12345"  # ❌ removed
-
 # -------------------------------------------
 # SECURE LOGIN (no SQL injection)
 # -------------------------------------------
@@ -35,8 +32,8 @@ def login():
 
         return jsonify({"error": "Invalid credentials"}), 401
 
-    except Exception as e:
-        return jsonify({"error": "server error"}), 500
+    except Exception:
+        return jsonify({"error": "Server error"}), 500
 
 
 # -------------------------------------------
@@ -62,8 +59,6 @@ def ping():
 # -------------------------------------------
 @app.route("/compute", methods=["POST"])
 def compute():
-    expression = request.json.get("expression")
-
     return jsonify({"error": "This endpoint is disabled for security reasons"}), 403
 
 
@@ -89,11 +84,17 @@ def hash_password():
 def readfile():
     filename = request.json.get("filename")
 
-    # Allow only files in ./safe/
-    if not filename or "/" in filename or ".." in filename:
+    # Validation stricte : uniquement lettres, chiffres, _, -, extension .txt
+    if not filename or not re.match(r"^[a-zA-Z0-9_\-]+\.txt$", filename):
         return jsonify({"error": "Invalid filename"}), 400
 
-    safe_path = os.path.join("safe", filename)
+    # Construire le chemin absolu sécurisé
+    safe_dir = os.path.abspath("safe")
+    safe_path = os.path.abspath(os.path.join(safe_dir, filename))
+
+    # Vérifier que le fichier reste dans ./safe
+    if not safe_path.startswith(safe_dir):
+        return jsonify({"error": "Invalid filename"}), 400
 
     if not os.path.exists(safe_path):
         return jsonify({"error": "File not found"}), 404
